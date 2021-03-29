@@ -1,6 +1,7 @@
-package main
+package pkg
 
 import (
+	"curielog/pkg/drivers"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -14,11 +15,11 @@ type Config struct {
 }
 
 type OutputsConfig struct {
-	Elasticsearch ElasticsearchConfig `mapstructure:"elasticsearch,omitempty"`
-	Logstash      LogstashConfig      `mapstructure:"logstash,omitempty"`
+	Elasticsearch drivers.ElasticsearchConfig `mapstructure:"elasticsearch,omitempty"`
+	Logstash      drivers.LogstashConfig      `mapstructure:"logstash,omitempty"`
 }
 
-func LoadConfig() (config Config, err error) {
+func LoadConfig() Config {
 	viper.AutomaticEnv()
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("/etc/curielogger/")
@@ -27,16 +28,18 @@ func LoadConfig() (config Config, err error) {
 	viper.SetEnvPrefix("CURIELOGGER")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
-	err = viper.ReadInConfig()
+	err := viper.ReadInConfig()
 	if err != nil {
-		return
+		panic(err)
 	}
-
-	err = viper.Unmarshal(&config)
+	cfg := Config{}
+	err = viper.Unmarshal(&cfg)
 	if err != nil {
-		return
+		panic(err)
 	}
-
-	err = validate.Validate(&config)
-	return
+	err = validate.Validate(&cfg)
+	if err != nil {
+		panic(err)
+	}
+	return cfg
 }
