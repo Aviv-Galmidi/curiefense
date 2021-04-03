@@ -39,7 +39,10 @@ do
         IMG=${REPO}/$image
         echo "=================== $IMG:$DOCKER_TAG ====================="
         # shellcheck disable=SC2086
-        if tar -C "$image" -czh . | docker build -t "$IMG:$DOCKER_TAG" ${BUILD_OPT} -; then
+        # a temporary file is needed on macos -- docker complains otherwise
+        TMPFILE=(mktemp)
+        tar -czhf "$TMPFILE" -C "$image" .
+        if docker build -t "$IMG:$DOCKER_TAG" ${BUILD_OPT} - < "$TMPFILE"; then
             STB="ok"
             if [ -n "$PUSH" ]; then
                 if docker push "$IMG:$DOCKER_TAG"; then
