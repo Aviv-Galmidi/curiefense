@@ -326,7 +326,7 @@ func main() {
 	}
 
 	// Logstash
-	if config.Outputs.Logstash.Enabled {
+	if (config.Outputs.Logstash.Enabled || check_env_flag("CURIELOGGER_USES_LOGSTASH")) {
 		log.Printf("[DEBUG] Logstash enabled with URL: %s", config.Outputs.Logstash.Url)
 		ls := logstashLogger{config: config.Outputs.Logstash}
 		go configRetry(&grpcParams, &ls)
