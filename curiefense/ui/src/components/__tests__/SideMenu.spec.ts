@@ -9,18 +9,24 @@ jest.mock('axios')
 describe('SideMenu.vue', () => {
   let wrapper: Wrapper<Vue>
   let $route: any
+  let swaggerURL: string
   let kibanaURL: string
   let grafanaURL: string
+  let prometheusURL: string
   beforeEach(() => {
     $route = {
       path: '/config',
     }
+    swaggerURL = 'https://10.0.0.1:30000/api/v1/'
     kibanaURL = 'https://10.0.0.1:5601/app/discover/'
     grafanaURL = 'https://10.0.0.1:30300/'
+    prometheusURL = 'https://10.0.0.1:9090/'
     const dbData = {
       links: {
-        kibaba_url: kibanaURL,
+        kibana_url: kibanaURL,
         grafana_url: grafanaURL,
+        swagger_url: swaggerURL,
+        prometheus_url: prometheusURL,
       },
     }
     jest.spyOn(axios, 'get').mockImplementation((path) => {
@@ -59,12 +65,35 @@ describe('SideMenu.vue', () => {
     }
   }
 
-  test('should render all Configuration menu items', () => {
+  test('should render all Configuration menu items when db key does not exist', () => {
+    jest.spyOn(axios, 'get').mockImplementation((path) => {
+      if (path === `/conf/api/v1/db/system/`) {
+        return Promise.resolve({data: {}})
+      }
+      return Promise.resolve({data: {}})
+    })
+    wrapper = mount(SideMenu, {
+      mocks: {
+        $route,
+      },
+      stubs: ['router-link', 'router-view'],
+    })
     const wantedInternalMenuItems = [
       {path: '/config', title: 'Policies & Rules'},
       {path: '/db', title: 'Databases'},
       {path: '/publish', title: 'Publish Changes'},
       {path: `${location.protocol}//${location.hostname}:30000/api/v1/`, title: 'API', external: true},
+    ]
+
+    menuItemShouldContainWantedSectionItems('settings', wantedInternalMenuItems)
+  })
+
+  test('should render all Configuration menu items when db key exists', () => {
+    const wantedInternalMenuItems = [
+      {path: '/config', title: 'Policies & Rules'},
+      {path: '/db', title: 'Databases'},
+      {path: '/publish', title: 'Publish Changes'},
+      {path: swaggerURL, title: 'API', external: true},
     ]
 
     menuItemShouldContainWantedSectionItems('settings', wantedInternalMenuItems)
@@ -86,12 +115,17 @@ describe('SideMenu.vue', () => {
     const wantedMenuItems = [
       {
         path: `${location.protocol}//${location.hostname}:5601/app/discover`,
-        title: 'Access Log (ELK)',
+        title: 'Kibana',
         external: true,
       },
       {
         path: `${location.protocol}//${location.hostname}:30300/`,
         title: 'Grafana',
+        external: true,
+      },
+      {
+        path: `${location.protocol}//${location.hostname}:9090/`,
+        title: 'Prometheus',
         external: true,
       },
     ]
@@ -112,12 +146,17 @@ describe('SideMenu.vue', () => {
     const wantedMenuItems = [
       {
         path: kibanaURL,
-        title: 'Access Log (ELK)',
+        title: 'Kibana',
         external: true,
       },
       {
         path: grafanaURL,
         title: 'Grafana',
+        external: true,
+      },
+      {
+        path: prometheusURL,
+        title: 'Prometheus',
         external: true,
       },
     ]

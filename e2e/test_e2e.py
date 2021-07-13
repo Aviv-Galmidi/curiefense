@@ -165,23 +165,17 @@ class LogHelper:
         self._es_url = es_url + "/_search"
 
     def check_log_pattern(self, pattern):
-        if self._es_url == "/_search":
-            data = {
-                "statement": (
-                    "SELECT Path FROM logs " "ORDER BY StartTime DESC LIMIT 1024"
-                ),
-                "parameters": [],
-            }
-            res = requests.post(self._base_url + "/logs/api/v1/exec/", json=data)
-            for log in res.json():
-                if pattern in log[0]:
-                    return True
+        data = {
+            "query": {"bool": {"must": {"match": {"request.attributes.uri": pattern}}}}
+        }
+        res = requests.get(self._es_url, json=data)
+        nbhits = res.json()["hits"]["total"]["value"]
+        if nbhits == 1:
+            return True
         else:
-            data = {"query": {"bool": {"must": {"match": {"path": pattern}}}}}
-            res = requests.get(self._es_url, json=data)
-            nbhits = res.json()["hits"]["total"]["value"]
-            return nbhits == 1
-        return False
+            print("Pattern %r" % (pattern,))
+            print("Request result %r" % (res,))
+            return False
 
 
 @pytest.fixture(scope="session")
@@ -447,7 +441,7 @@ def gen_rl_rules(authority):
     add_rl_rule(
         "action-response",
         action="response",
-        param_ext={"status": 123, "content": "Response body"},
+        param_ext={"status": "123", "content": "Response body"},
     )
     add_rl_rule(
         "action-redirect",
@@ -480,7 +474,7 @@ def gen_rl_rules(authority):
         "action-ban-response",
         action="ban",
         subaction="response",
-        param_ext={"status": 123, "ttl": "10", "content": "Content"},
+        param_ext={"status": "123", "ttl": "10", "content": "Content"},
         subaction_params={"content": "Response body", "status": "123"},
     )
     add_rl_rule(
@@ -502,7 +496,7 @@ def gen_rl_rules(authority):
         param_ext={"ttl": "10"},
         subaction_ext={"headers": "Header-Name"},
         subaction_params={
-            "headers": "foo: bar",
+            "headers": {"foo": "bar"},
             "action": {"type": "default", "params": {}},
         },
     )
@@ -510,7 +504,7 @@ def gen_rl_rules(authority):
         "action-header",
         action="request_header",
         action_ext={"headers": "Header-Name"},
-        param_ext={"headers": "foo: bar"},
+        param_ext={"headers": {"foo": "bar"}},
     )
 
     rl_urlmap = [
@@ -1080,7 +1074,11 @@ TEST_TAGRULES = {
                     ["uri", "/e2e-tagrules-uri", "annotation"],
                     ["ip", IP6_1, "annotation"],
                     ["ip", IP4_US, "annotation"],
-                    ["country", "JP", "annotation"],
+                    [
+                        "country",
+                        "jp",
+                        "annotation",
+                    ],  # TODO: discuss is this should work using caps
                     ["asn", "13335", "annotation"],
                 ],
             },

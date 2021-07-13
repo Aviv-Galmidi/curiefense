@@ -1,6 +1,7 @@
 #!/bin/bash
 
-HELM_ARGS=${HELM_ARGS:-"--wait --timeout 600"}
+helm repo add curiefense https://helm.curiefense.io/
+helm repo update
 
 if [ -z "$DOCKER_TAG" ]; then
     if ! GITTAG="$(git describe --tag --long --exact-match 2> /dev/null)"; then
@@ -14,7 +15,7 @@ fi
 PARAMS=()
 
 if [ -n "$NOPULL" ]; then
-    PARAMS+=("--set" "global.imagePullPolicy=Never")
+    PARAMS+=("--set" "global.imagePullPolicy=IfNotPresent")
 fi
 
 if [ -n "$TESTIMG" ]; then
@@ -24,17 +25,16 @@ else
     echo "Deploying version $DOCKER_TAG for all images"
 fi
 
-if ! kubectl get namespaces|grep -q curiefense; then
-	kubectl create namespace curiefense
-    echo "curiefense namespace created"
-fi
-
 # shellcheck disable=SC2086
-if ! helm upgrade --install --namespace curiefense --reuse-values ${HELM_ARGS} \
+if ! helm upgrade --install --namespace curiefense --reuse-values \
     --set "global.settings.docker_tag=$DOCKER_TAG" \
-    "${PARAMS[@]}" "$@" curiefense curiefense/
+    --wait --timeout 600s --create-namespace \
+    "${PARAMS[@]}" "$@" curiefense curiefense/curiefense
 then
     echo "curiefense deployment failure... "
     kubectl --namespace curiefense describe pods
+
+    # Template generation
+    helm template --debug --set "global.settings.docker_tag=$DOCKER_TAG" "${PARAMS[@]}" "$@" curiefense curiefense/curiefense
     # TODO(flaper87): Print logs from failed PODs
 fi
