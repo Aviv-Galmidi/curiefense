@@ -13,8 +13,8 @@ describe('ContentFilterRulesEditor.vue', () => {
       'name': '100000',
       'msg': 'SQLi Attempt (Conditional Operator Detected)',
       'operand': '\\s(and|or)\\s+\\d+\\s+.*between\\s.*\\d+\\s+and\\s+\\d+.*',
-      'severity': 5,
-      'certainity': 5,
+      'risk': 5,
+      'notes': 'SQL injection',
       'category': 'sqli',
       'subcategory': 'statement injection',
     }]
@@ -36,25 +36,29 @@ describe('ContentFilterRulesEditor.vue', () => {
       expect(element.value).toEqual(docs[0].name)
     })
 
+    test('should have correct los message in input', () => {
+      const element = wrapper.find('.document-msg').element as HTMLInputElement
+      expect(element.value).toEqual(docs[0].msg)
+    })
+
     test('should have correct operand in input', () => {
       const element = wrapper.find('.document-operand').element as HTMLInputElement
       expect(element.value).toEqual(docs[0].operand)
     })
 
-    test('should have correct severity displayed', () => {
-      expect(wrapper.find('.document-severity').text()).toEqual(docs[0].severity.toString())
-    })
-
-    test('should have correct certainty displayed', () => {
-      expect(wrapper.find('.document-certainty').text()).toEqual(docs[0].certainity.toString())
+    test('should have correct risk displayed', () => {
+      const riskSelection = wrapper.find('.risk-level-selection')
+      expect((riskSelection.find('option:checked').element as HTMLOptionElement).value).toEqual(docs[0].risk.toString())
     })
 
     test('should have correct category displayed', () => {
-      expect(wrapper.find('.document-category').text()).toEqual(docs[0].category)
+      const element = wrapper.find('.document-category').element as HTMLInputElement
+      expect(element.value).toEqual(docs[0].category)
     })
 
     test('should have correct subcategory displayed', () => {
-      expect(wrapper.find('.document-subcategory').text()).toEqual(docs[0].subcategory)
+      const element = wrapper.find('.document-subcategory').element as HTMLInputElement
+      expect(element.value).toEqual(docs[0].subcategory)
     })
   })
 
@@ -70,11 +74,72 @@ describe('ContentFilterRulesEditor.vue', () => {
     expect(wrapper.emitted('update:selectedDoc')[0]).toEqual([wantedEmit])
   })
 
+  test('should emit doc update when notes input changes', async () => {
+    const wantedNotes = 'new notes'
+    const wantedEmit = JSON.parse(JSON.stringify(docs[0]))
+    wantedEmit.notes = wantedNotes
+    const element = wrapper.find('.document-notes')
+    element.setValue(wantedNotes)
+    element.trigger('change')
+    await Vue.nextTick()
+    expect(wrapper.emitted('update:selectedDoc')).toBeTruthy()
+    expect(wrapper.emitted('update:selectedDoc')[0]).toEqual([wantedEmit])
+  })
+
+  test('should emit doc update when category input changes', async () => {
+    const wantedCategory = 'new category'
+    const wantedEmit = JSON.parse(JSON.stringify(docs[0]))
+    wantedEmit.category = wantedCategory
+    const element = wrapper.find('.document-category')
+    element.setValue(wantedCategory)
+    element.trigger('change')
+    await Vue.nextTick()
+    expect(wrapper.emitted('update:selectedDoc')).toBeTruthy()
+    expect(wrapper.emitted('update:selectedDoc')[0]).toEqual([wantedEmit])
+  })
+
+  test('should emit doc update when subcategory input changes', async () => {
+    const wantedSubcategory = 'new category'
+    const wantedEmit = JSON.parse(JSON.stringify(docs[0]))
+    wantedEmit.subcategory = wantedSubcategory
+    const element = wrapper.find('.document-subcategory')
+    element.setValue(wantedSubcategory)
+    element.trigger('change')
+    await Vue.nextTick()
+    expect(wrapper.emitted('update:selectedDoc')).toBeTruthy()
+    expect(wrapper.emitted('update:selectedDoc')[0]).toEqual([wantedEmit])
+  })
+
+  test('should emit doc update when risk level input changes', async () => {
+    const wantedRisk = 3
+    const wantedEmit = JSON.parse(JSON.stringify(docs[0]))
+    wantedEmit.risk = wantedRisk
+    const selection = wrapper.find('.risk-level-selection')
+    const options = selection.findAll('option')
+    options.at(2).setSelected() // index => value: 0 => 1, 1 => 2, 2 => 3
+    selection.trigger('change')
+    await Vue.nextTick()
+    expect(wrapper.emitted('update:selectedDoc')).toBeTruthy()
+    expect(wrapper.emitted('update:selectedDoc')[0]).toEqual([wantedEmit])
+  })
+
+  test('should emit doc update when log message input changes', async () => {
+    const wantedMessage = 'This is a message in the logs'
+    const wantedEmit = JSON.parse(JSON.stringify(docs[0]))
+    wantedEmit.msg = wantedMessage
+    const element = wrapper.find('.document-msg')
+    element.setValue(wantedMessage)
+    element.trigger('change')
+    await Vue.nextTick()
+    expect(wrapper.emitted('update:selectedDoc')).toBeTruthy()
+    expect(wrapper.emitted('update:selectedDoc')[0]).toEqual([wantedEmit])
+  })
+
   test('should emit doc update when operand input changes', async () => {
     const wantedOperand = '\\s(and|or)\\s+["\']\\w+["\']\\s+.*between\\s.*["\']\\w+["\']\\s+and\\s+["\']\\w+.*'
     const wantedEmit = JSON.parse(JSON.stringify(docs[0]))
     wantedEmit.operand = wantedOperand
-    const element = wrapper.find('.document-operand');
+    const element = wrapper.find('.document-operand')
     element.setValue(wantedOperand)
     element.trigger('change')
     await Vue.nextTick()

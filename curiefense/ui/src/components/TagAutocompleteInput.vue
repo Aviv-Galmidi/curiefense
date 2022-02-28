@@ -83,7 +83,7 @@ export default Vue.extend({
       apiRoot: RequestsUtils.confAPIRoot,
       apiVersion: RequestsUtils.confAPIVersion,
       filterTag(tag: string) {
-        return tag.replace( /[^\w: ]|_/g, '-' ).toLowerCase()
+        return tag.replace(/[^\w: ]|_/g, '-').toLowerCase()
       },
     }
   },
@@ -228,7 +228,7 @@ export default Vue.extend({
       // rebuild the tags suggestion list after a successful save
       this.buildTagsSuggestionsFromData(document)
       console.log(
-        `saved to namespace the following tags list: [${tags.join(',')}],it will now be available for autocomplete!`,
+          `saved to namespace the following tags list: [${tags.join(',')}],it will now be available for autocomplete!`,
       )
     },
   },
