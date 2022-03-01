@@ -134,6 +134,74 @@ fn lua_inspect_request(
     })
 }
 
+struct DummyGrasshopper {
+    humanity: bool,
+}
+
+impl curiefense::interface::Grasshopper for DummyGrasshopper {
+    fn js_app(&self) -> Option<std::string::String> {
+        None
+    }
+    fn js_bio(&self) -> Option<std::string::String> {
+        None
+    }
+    fn parse_rbzid(&self, _: &str, _: &str) -> Option<bool> {
+        Some(self.humanity)
+    }
+    fn gen_new_seed(&self, _: &str) -> Option<std::string::String> {
+        None
+    }
+    fn verify_workproof(&self, _: &str, _: &str) -> Option<std::string::String> {
+        Some("ok".into())
+    }
+}
+
+/// Lua TEST interface to the inspection function
+/// allows settings the Grasshopper result!
+///
+/// args are
+/// * meta (contains keys "method", "path", and optionally "authority")
+/// * headers
+/// * (opt) body
+/// * ip addr
+/// * (opt) grasshopper
+#[allow(clippy::type_complexity)]
+#[allow(clippy::unnecessary_wraps)]
+fn lua_test_inspect_request(
+    _lua: &Lua,
+    args: (
+        HashMap<String, String>, // meta
+        HashMap<String, String>, // headers
+        Option<LuaString>,       // maybe body
+        String,                  // ip
+        bool,                    // humanity
+    ),
+) -> LuaResult<(String, Option<String>)> {
+    let (meta, headers, lua_body, str_ip, humanity) = args;
+    let grasshopper = Some(DummyGrasshopper { humanity });
+
+    // TODO: solve the lifetime issue for the &[u8] to reduce duplication
+    let res = match lua_body {
+        None => inspect_request("/config/current/config", meta, headers, None, str_ip, grasshopper),
+        Some(body) => inspect_request(
+            "/config/current/config",
+            meta,
+            headers,
+            Some(body.as_bytes()),
+            str_ip,
+            grasshopper,
+        ),
+    };
+
+    Ok(match res {
+        Err(rr) => (
+            Decision::Pass.to_json_raw(serde_json::Value::Null, Logs::default()),
+            Some(rr),
+        ),
+        Ok(ir) => ir.into_json(),
+    })
+}
+
 /// Rust-native inspection top level function
 fn inspect_request<GH: Grasshopper>(
     configpath: &str,
@@ -149,7 +217,8 @@ fn inspect_request<GH: Grasshopper>(
 
     let reqinfo = map_request(&mut logs, ip, headers, rmeta, mbody)?;
 
-    let (dec, tags, masked_rinfo) = inspect_generic_request_map(configpath, grasshopper, reqinfo, Tags::default(), &mut logs);
+    let (dec, tags, masked_rinfo) =
+        inspect_generic_request_map(configpath, grasshopper, reqinfo, Tags::default(), &mut logs);
 
     Ok(InspectionResult {
         decision: dec,
@@ -166,6 +235,8 @@ fn curiefense(lua: &Lua) -> LuaResult<LuaTable> {
 
     // end-to-end inspection
     exports.set("inspect_request", lua.create_function(lua_inspect_request)?)?;
+    // end-to-end inspection (test)
+    exports.set("test_inspect_request", lua.create_function(lua_test_inspect_request)?)?;
     // content filter inspection
     exports.set(
         "inspect_content_filter",

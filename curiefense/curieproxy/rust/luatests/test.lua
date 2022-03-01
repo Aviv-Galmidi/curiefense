@@ -95,7 +95,19 @@ local function run_inspect_request(raw_request_map)
       ip = headers["x-forwarded-for"]
     end
 
-    local response, merr = curiefense.inspect_request(meta, headers, raw_request_map.body, ip, grasshopper)
+    local human = nil
+    if raw_request_map.human ~= nil then
+      human = raw_request_map.human
+      if human then
+        headers["Cookie"] = "rbzid=OK;"
+      end
+    end
+    local response, merr
+    if human ~= nil then
+      response, merr = curiefense.test_inspect_request(meta, headers, raw_request_map.body, ip, human)
+    else
+      response, merr = curiefense.inspect_request(meta, headers, raw_request_map.body, ip, grasshopper)
+    end
     if merr then
       error(merr)
     end
@@ -134,6 +146,14 @@ local function test_raw_request(request_path)
         print("Expected block_mode " .. cjson.encode(raw_request_map.response.block_mode) ..
           ", but got " .. cjson.encode(r.response.block_mode))
         good = false
+      end
+      if raw_request_map.response.reason then
+        local actual = cjson.encode(r.response.reason)
+        local expected = cjson.encode(raw_request_map.response.reason)
+        if actual ~= expected then
+          print("Expected reason " .. expected ..  ", but got " .. actual)
+          good = false
+        end
       end
     end
 
@@ -304,6 +324,12 @@ local function test_content_filter(request_path)
   end
 end
 
+for file in lfs.dir[[luatests/raw_requests]] do
+  if ends_with(file, ".json") then
+    test_raw_request("luatests/raw_requests/" .. file)
+  end
+end
+
 for file in lfs.dir[[luatests/masking]] do
   if ends_with(file, ".json") then
     test_masking("luatests/masking/" .. file)
@@ -313,12 +339,6 @@ end
 for file in lfs.dir[[luatests/contentfilter_only]] do
   if ends_with(file, ".json") then
     test_content_filter("luatests/contentfilter_only/" .. file)
-  end
-end
-
-for file in lfs.dir[[luatests/raw_requests]] do
-  if ends_with(file, ".json") then
-    test_raw_request("luatests/raw_requests/" .. file)
   end
 end
 
