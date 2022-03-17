@@ -7,7 +7,17 @@ import {shallowMount, Wrapper} from '@vue/test-utils'
 import Vue from 'vue'
 import axios from 'axios'
 import _ from 'lodash'
-import {ACLProfile, Branch, Commit, ContentFilterProfile, Document, FlowControlPolicy, GlobalFilter, RateLimit, SecurityPolicy} from '@/types'
+import {
+  ACLProfile,
+  Branch,
+  Commit,
+  ContentFilterProfile,
+  Document,
+  FlowControlPolicy,
+  GlobalFilter,
+  RateLimit,
+  SecurityPolicy,
+} from '@/types'
 
 jest.mock('axios')
 
@@ -655,18 +665,44 @@ describe('DocumentEditor.vue', () => {
       'id': '009e846e819e',
       'name': 'content filter',
       'ignore_alphanum': true,
-      'max_header_length': 1024,
-      'max_cookie_length': 2048,
-      'max_arg_length': 1536,
-      'max_headers_count': 36,
-      'max_cookies_count': 42,
-      'max_args_count': 512,
-      'min_headers_risk': 1,
-      'min_cookies_risk': 1,
-      'min_args_risk': 1,
-      'args': {'names': [], 'regex': []},
-      'headers': {'names': [], 'regex': []},
-      'cookies': {'names': [], 'regex': []},
+      'headers': {
+        'names': [],
+        'regex': [],
+        'min_risk': 4,
+        'max_count': 42,
+        'max_length': 1024,
+      },
+      'cookies': {
+        'names': [],
+        'regex': [],
+        'min_risk': 4,
+        'max_count': 42,
+        'max_length': 1024,
+      },
+      'args': {
+        'names': [],
+        'regex': [],
+        'min_risk': 4,
+        'max_count': 512,
+        'max_length': 1024,
+      },
+      'path': {
+        'names': [],
+        'regex': [],
+        'min_risk': 4,
+        'max_count': 42,
+        'max_length': 1024,
+      },
+      'decoding': {
+        base64: true,
+        dual: false,
+        html: false,
+        unicode: false,
+      },
+      'masking_seed': '',
+      'active': [],
+      'report': [],
+      'ignore': [],
     }]
     rateLimitsDocs = [{
       'id': 'f971e92459e2',

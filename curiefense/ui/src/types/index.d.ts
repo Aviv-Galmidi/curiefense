@@ -23,6 +23,14 @@ declare module CuriefenseClient {
     exclusions: { [key: string]: ContentFilterIgnoreType }
   }
 
+  type ContentFilterProfileSection = {
+    names: ContentFilterEntryMatch[],
+    regex: ContentFilterEntryMatch[],
+    min_risk: number,
+    max_count: number,
+    max_length: number
+  }
+
   type SecurityPolicyEntryMatch = {
     match: string
     name: string
@@ -69,6 +77,8 @@ declare module CuriefenseClient {
 
   type Category = 'path' | 'query' | 'uri' | 'method' | 'ip' | 'asn' | 'country' | 'headers' | 'args' | 'cookies'
 
+  type ContentFilterProfileSectionType = 'headers' | 'args' | 'cookies' | 'path'
+
   type ArgsCookiesHeadersType = 'headers' | 'args' | 'cookies'
 
   type LimitRuleType = 'headers' | 'args' | 'cookies' | 'attrs' | 'self'
@@ -103,27 +113,20 @@ declare module CuriefenseClient {
     id: string
     name: string
     ignore_alphanum: boolean
-    max_header_length: number
-    max_cookie_length: number
-    max_arg_length: number
-    max_headers_count: number
-    max_cookies_count: number
-    max_args_count: number
-    min_headers_risk: number,
-    min_cookies_risk: number,
-    min_args_risk: number,
-    args: {
-      names: ContentFilterEntryMatch[]
-      regex: ContentFilterEntryMatch[]
-    }
-    headers: {
-      names: ContentFilterEntryMatch[]
-      regex: ContentFilterEntryMatch[]
-    }
-    cookies: {
-      names: ContentFilterEntryMatch[]
-      regex: ContentFilterEntryMatch[]
-    }
+    headers: ContentFilterProfileSection,
+    cookies: ContentFilterProfileSection,
+    args: ContentFilterProfileSection,
+    path: ContentFilterProfileSection,
+    decoding: {
+      base64: boolean,
+      dual: boolean,
+      html: boolean,
+      unicode: boolean
+    },
+    masking_seed: string,
+    active: string[],
+    report: string[],
+    ignore: string[]
   }
 
   type GlobalFilter = {

@@ -2,7 +2,15 @@ import ContentFilterEditor from '@/doc-editors/ContentFilterProfileEditor.vue'
 import {beforeEach, describe, expect, jest, test} from '@jest/globals'
 import {shallowMount, Wrapper} from '@vue/test-utils'
 import Vue from 'vue'
-import {ArgsCookiesHeadersType, NamesRegexType, ContentFilterProfile, ContentFilterRuleGroup, ContentFilterRule} from '@/types'
+import {
+  ArgsCookiesHeadersType,
+  ContentFilterEntryMatch,
+  ContentFilterProfile,
+  ContentFilterProfileSection,
+  ContentFilterRule,
+  ContentFilterRuleGroup,
+  NamesRegexType,
+} from '@/types'
 import AutocompleteInput from '@/components/AutocompleteInput.vue'
 import _ from 'lodash'
 import axios from 'axios'
@@ -19,18 +27,44 @@ describe('ContentFilterProfileEditor.vue', () => {
       'id': '__default__',
       'name': 'default contentfilter',
       'ignore_alphanum': true,
-      'max_header_length': 1024,
-      'max_cookie_length': 2048,
-      'max_arg_length': 1536,
-      'max_headers_count': 36,
-      'max_cookies_count': 42,
-      'max_args_count': 512,
-      'min_headers_risk': 1,
-      'min_cookies_risk': 1,
-      'min_args_risk': 1,
-      'args': {'names': [], 'regex': []},
-      'headers': {'names': [], 'regex': []},
-      'cookies': {'names': [], 'regex': []},
+      'headers': {
+        'names': [],
+        'regex': [],
+        'min_risk': 4,
+        'max_count': 42,
+        'max_length': 1024,
+      },
+      'cookies': {
+        'names': [],
+        'regex': [],
+        'min_risk': 4,
+        'max_count': 42,
+        'max_length': 1024,
+      },
+      'args': {
+        'names': [],
+        'regex': [],
+        'min_risk': 4,
+        'max_count': 512,
+        'max_length': 1024,
+      },
+      'path': {
+        'names': [],
+        'regex': [],
+        'min_risk': 4,
+        'max_count': 42,
+        'max_length': 1024,
+      },
+      'decoding': {
+        base64: true,
+        dual: false,
+        html: false,
+        unicode: false,
+      },
+      'masking_seed': '',
+      'active': [],
+      'report': [],
+      'ignore': [],
     }]
     contentFilterRulesDocs = [
       {
@@ -122,52 +156,168 @@ describe('ContentFilterProfileEditor.vue', () => {
 
     test('should have correct max header length in input', () => {
       const element = wrapper.find('.max-header-length-input').element as HTMLInputElement
-      expect(element.value).toEqual(docs[0].max_header_length.toString())
+      expect(element.value).toEqual(docs[0].headers.max_length.toString())
     })
 
     test('should have correct max cookie length in input', () => {
       const element = wrapper.find('.max-cookie-length-input').element as HTMLInputElement
-      expect(element.value).toEqual(docs[0].max_cookie_length.toString())
+      expect(element.value).toEqual(docs[0].cookies.max_length.toString())
     })
 
     test('should have correct max arg length in input', () => {
       const element = wrapper.find('.max-arg-length-input').element as HTMLInputElement
-      expect(element.value).toEqual(docs[0].max_arg_length.toString())
+      expect(element.value).toEqual(docs[0].args.max_length.toString())
     })
 
     test('should have correct max headers count in input', () => {
       const element = wrapper.find('.max-headers-count-input').element as HTMLInputElement
-      expect(element.value).toEqual(docs[0].max_headers_count.toString())
+      expect(element.value).toEqual(docs[0].headers.max_count.toString())
     })
 
     test('should have correct max cookies count in input', () => {
       const element = wrapper.find('.max-cookies-count-input').element as HTMLInputElement
-      expect(element.value).toEqual(docs[0].max_cookies_count.toString())
+      expect(element.value).toEqual(docs[0].cookies.max_count.toString())
     })
 
     test('should have correct max args count in input', () => {
       const element = wrapper.find('.max-args-count-input').element as HTMLInputElement
-      expect(element.value).toEqual(docs[0].max_args_count.toString())
+      expect(element.value).toEqual(docs[0].args.max_count.toString())
     })
 
     test('should have correct min headers risk in input', () => {
       const element = wrapper.find('.min-headers-risk-input').element as HTMLInputElement
-      expect(element.value).toEqual(docs[0].min_headers_risk.toString())
+      expect(element.value).toEqual(docs[0].headers.min_risk.toString())
     })
 
     test('should have correct min cookies risk in input', () => {
       const element = wrapper.find('.min-cookies-risk-input').element as HTMLInputElement
-      expect(element.value).toEqual(docs[0].min_cookies_risk.toString())
+      expect(element.value).toEqual(docs[0].cookies.min_risk.toString())
     })
 
     test('should have correct min args risk in input', () => {
       const element = wrapper.find('.min-args-risk-input').element as HTMLInputElement
-      expect(element.value).toEqual(docs[0].min_args_risk.toString())
+      expect(element.value).toEqual(docs[0].args.min_risk.toString())
     })
 
     test('should have correct ignore alphanumeric boolean in checkbox input', () => {
       const element = wrapper.find('.ignore-alphanumeric-input').element as HTMLInputElement
       expect(element.checked).toEqual(docs[0].ignore_alphanum)
+    })
+  })
+
+  describe('normalize sections', () => {
+    describe('with missing sections', () => {
+      let docsForNormalization: ContentFilterProfile[]
+      let defaultSectionsValue: ContentFilterProfileSection
+      beforeEach(async () => {
+        // TS ignore because we want to test the status of normalization where some of the data is missing
+        // @ts-ignore
+        docsForNormalization = [{
+          'id': '__default__',
+          'name': 'default contentfilter',
+          'ignore_alphanum': true,
+          'decoding': {
+            base64: true,
+            dual: false,
+            html: false,
+            unicode: false,
+          },
+          'masking_seed': '',
+          'active': [],
+          'report': [],
+          'ignore': [],
+        }]
+        defaultSectionsValue = {
+          names: [] as ContentFilterEntryMatch[],
+          regex: [] as ContentFilterEntryMatch[],
+          min_risk: 0,
+          max_count: 0,
+          max_length: 0,
+        }
+        wrapper = shallowMount(ContentFilterEditor, {
+          propsData: {
+            selectedDoc: docsForNormalization[0],
+            selectedBranch: 'master',
+          },
+        })
+        await Vue.nextTick()
+      })
+
+      test('should emit default section for args when given profile with undefined args', () => {
+        expect(wrapper.emitted('update:selectedDoc')).toBeTruthy()
+        expect(wrapper.emitted('update:selectedDoc')[0][0].args).toEqual(defaultSectionsValue)
+      })
+
+      test('should emit default section for headers when given profile with undefined headers', () => {
+        expect(wrapper.emitted('update:selectedDoc')).toBeTruthy()
+        expect(wrapper.emitted('update:selectedDoc')[0][0].headers).toEqual(defaultSectionsValue)
+      })
+
+      test('should emit default section for cookies when given profile with undefined cookies', () => {
+        expect(wrapper.emitted('update:selectedDoc')).toBeTruthy()
+        expect(wrapper.emitted('update:selectedDoc')[0][0].cookies).toEqual(defaultSectionsValue)
+      })
+
+      test('should emit default section for path when given profile with undefined path', () => {
+        expect(wrapper.emitted('update:selectedDoc')).toBeTruthy()
+        expect(wrapper.emitted('update:selectedDoc')[0][0].path).toEqual(defaultSectionsValue)
+      })
+    })
+
+    describe('with all sections provided', () => {
+      test('should not emit new doc if all sections are provided', async () => {
+        const docsShouldNotNormalize: ContentFilterProfile[] = [{
+          'id': '__default__',
+          'name': 'default contentfilter',
+          'ignore_alphanum': true,
+          'headers': {
+            'names': [],
+            'regex': [],
+            'min_risk': 4,
+            'max_count': 42,
+            'max_length': 1024,
+          },
+          'cookies': {
+            'names': [],
+            'regex': [],
+            'min_risk': 4,
+            'max_count': 42,
+            'max_length': 1024,
+          },
+          'args': {
+            'names': [],
+            'regex': [],
+            'min_risk': 4,
+            'max_count': 512,
+            'max_length': 1024,
+          },
+          'path': {
+            'names': [],
+            'regex': [],
+            'min_risk': 4,
+            'max_count': 42,
+            'max_length': 1024,
+          },
+          'decoding': {
+            base64: true,
+            dual: false,
+            html: false,
+            unicode: false,
+          },
+          'masking_seed': '',
+          'active': [],
+          'report': [],
+          'ignore': [],
+        }]
+        wrapper = shallowMount(ContentFilterEditor, {
+          propsData: {
+            selectedDoc: docsShouldNotNormalize[0],
+            selectedBranch: 'master',
+          },
+        })
+        await Vue.nextTick()
+        expect(wrapper.emitted('update:selectedDoc')).toBeFalsy()
+      })
     })
   })
 

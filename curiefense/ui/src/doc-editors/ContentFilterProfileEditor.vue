@@ -46,7 +46,7 @@
                          type="number"
                          @change="emitDocUpdate"
                          title="Max header length"
-                         v-model.number="localDoc.max_header_length"/>
+                         v-model.number="localDoc.headers.max_length"/>
                 </td>
                 <td>
                   <input required
@@ -54,7 +54,7 @@
                          type="number"
                          @change="emitDocUpdate"
                          title="Max cookie length"
-                         v-model.number="localDoc.max_cookie_length"/>
+                         v-model.number="localDoc.cookies.max_length"/>
                 </td>
                 <td>
                   <input required
@@ -62,7 +62,7 @@
                          type="number"
                          @change="emitDocUpdate"
                          title="Max argument length"
-                         v-model.number="localDoc.max_arg_length"/>
+                         v-model.number="localDoc.args.max_length"/>
                 </td>
               </tr>
               <tr>
@@ -73,7 +73,7 @@
                          type="number"
                          @change="emitDocUpdate"
                          title="Max headers count"
-                         v-model.number="localDoc.max_headers_count"/>
+                         v-model.number="localDoc.headers.max_count"/>
                 </td>
                 <td>
                   <input required
@@ -81,7 +81,7 @@
                          type="number"
                          @change="emitDocUpdate"
                          title="Max cookies count"
-                         v-model.number="localDoc.max_cookies_count"/>
+                         v-model.number="localDoc.cookies.max_count"/>
                 </td>
                 <td>
                   <input required
@@ -89,7 +89,7 @@
                          type="number"
                          @change="emitDocUpdate"
                          title="Max arguments count"
-                         v-model.number="localDoc.max_args_count"/>
+                         v-model.number="localDoc.args.max_count"/>
                 </td>
               </tr>
               <tr>
@@ -100,7 +100,7 @@
                          type="number"
                          @change="emitDocUpdate"
                          title="Min headers risk"
-                         v-model.number="localDoc.min_headers_risk"/>
+                         v-model.number="localDoc.headers.min_risk"/>
                 </td>
                 <td>
                   <input required
@@ -108,7 +108,7 @@
                          type="number"
                          @change="emitDocUpdate"
                          title="Min cookies risk"
-                         v-model.number="localDoc.min_cookies_risk"/>
+                         v-model.number="localDoc.cookies.min_risk"/>
                 </td>
                 <td>
                   <input required
@@ -116,7 +116,7 @@
                          type="number"
                          @change="emitDocUpdate"
                          title="Min arguments risk"
-                         v-model.number="localDoc.min_args_risk"/>
+                         v-model.number="localDoc.args.min_risk"/>
                 </td>
               </tr>
               </tbody>
@@ -248,7 +248,7 @@
                                              type="text"
                                              v-model="newEntry.key"
                                              placeholder="Key"
-                                             title="Key" />
+                                             title="Key"/>
                                     </div>
                                   </div>
                                 </div>
@@ -263,7 +263,7 @@
                                    type="text"
                                    v-model="newEntry.reg"
                                    placeholder="Value"
-                                   title="Value regex" />
+                                   title="Value regex"/>
                             <span class="icon is-small is-left has-text-grey">
                               <i class="fas fa-code"></i>
                             </span>
@@ -285,14 +285,14 @@
                         </td>
                         <td class="width-30pct">
                           <autocomplete-input
-                            input-type="textarea"
-                            :suggestions="entryExclusionsSuggestions(newEntry)"
-                            :clear-input-after-selection="false"
-                            :auto-focus="false"
-                            class="new-entry-exclusions"
-                            selection-type="multiple"
-                            :title="autocompleteTitle"
-                            @value-submitted="updateEntryExclusions(newEntry, $event)" />
+                              input-type="textarea"
+                              :suggestions="entryExclusionsSuggestions(newEntry)"
+                              :clear-input-after-selection="false"
+                              :auto-focus="false"
+                              class="new-entry-exclusions"
+                              selection-type="multiple"
+                              :title="autocompleteTitle"
+                              @value-submitted="updateEntryExclusions(newEntry, $event)"/>
                         </td>
                         <td class="has-text-centered width-5pct">
                           <button title="Add new parameter"
@@ -329,7 +329,7 @@
                                    @change="emitDocUpdate"
                                    v-model="entry.reg"
                                    placeholder="Value"
-                                   title="Value regex" />
+                                   title="Value regex"/>
                             <span class="icon is-small is-left has-text-grey">
                               <i class="fas fa-code"></i>
                             </span>
@@ -353,15 +353,15 @@
                         </td>
                         <td class="width-30pct">
                           <autocomplete-input
-                            input-type="textarea"
-                            :suggestions="entryExclusionsSuggestions(entry)"
-                            :clear-input-after-selection="false"
-                            :initial-value="unpackExclusions(entry.exclusions)"
-                            :auto-focus="false"
-                            class="entry-exclusions"
-                            selection-type="multiple"
-                            :title="autocompleteTitle"
-                            @value-submitted="updateEntryExclusions(entry, $event)" />
+                              input-type="textarea"
+                              :suggestions="entryExclusionsSuggestions(entry)"
+                              :clear-input-after-selection="false"
+                              :initial-value="unpackExclusions(entry.exclusions)"
+                              :auto-focus="false"
+                              class="entry-exclusions"
+                              selection-type="multiple"
+                              :title="autocompleteTitle"
+                              @value-submitted="updateEntryExclusions(entry, $event)"/>
                         </td>
                         <td class="has-text-centered width-5pct">
                           <button title="Delete entry"
@@ -412,7 +412,7 @@
                             <input type="checkbox"
                                    class="entry-restrict"
                                    @change="emitDocUpdate"
-                                   v-model="entry.restrict" />
+                                   v-model="entry.restrict"/>
                           </label>
                         </td>
                         <td class="has-text-centered width-5pct">
@@ -420,20 +420,20 @@
                             <input type="checkbox"
                                    class="entry-mask"
                                    @change="emitDocUpdate"
-                                   v-model="entry.mask" />
+                                   v-model="entry.mask"/>
                           </label>
                         </td>
                         <td class="width-30pct">
                           <autocomplete-input
-                            input-type="textarea"
-                            :suggestions="entryExclusionsSuggestions(entry)"
-                            :clear-input-after-selection="false"
-                            :initial-value="unpackExclusions(entry.exclusions)"
-                            :auto-focus="false"
-                            class="entry-exclusions"
-                            selection-type="multiple"
-                            :title="autocompleteTitle"
-                            @value-submitted="updateEntryExclusions(entry, $event)" />
+                              input-type="textarea"
+                              :suggestions="entryExclusionsSuggestions(entry)"
+                              :clear-input-after-selection="false"
+                              :initial-value="unpackExclusions(entry.exclusions)"
+                              :auto-focus="false"
+                              class="entry-exclusions"
+                              selection-type="multiple"
+                              :title="autocompleteTitle"
+                              @value-submitted="updateEntryExclusions(entry, $event)"/>
                         </td>
                         <td class="has-text-centered width-5pct">
                           <button title="Delete entry"
@@ -465,8 +465,15 @@ import _ from 'lodash'
 import DatasetsUtils from '@/assets/DatasetsUtils.ts'
 import Vue from 'vue'
 import {
-  ArgsCookiesHeadersType, NamesRegexType, ContentFilterEntryMatch, ContentFilterProfile, ContentFilterIgnoreType,
-  ContentFilterRuleGroup, ContentFilterRule,
+  ArgsCookiesHeadersType,
+  ContentFilterEntryMatch,
+  ContentFilterIgnoreType,
+  ContentFilterProfile,
+  ContentFilterProfileSection,
+  ContentFilterProfileSectionType,
+  ContentFilterRule,
+  ContentFilterRuleGroup,
+  NamesRegexType,
 } from '@/types'
 import AutocompleteInput, {AutocompleteSuggestion} from '@/components/AutocompleteInput.vue'
 import RequestsUtils from '@/assets/RequestsUtils'
@@ -489,12 +496,20 @@ export default Vue.extend({
       mask: false,
       exclusions: {},
     }
+    const defaultContentFilterProfileSection: ContentFilterProfileSection = {
+      names: [] as ContentFilterEntryMatch[],
+      regex: [] as ContentFilterEntryMatch[],
+      min_risk: 0,
+      max_count: 0,
+      max_length: 0,
+    }
     return {
       tab: 'args' as ArgsCookiesHeadersType,
       newContentFilterLine: null as ArgsCookiesHeadersType,
       newEntry: defaultNewEntry,
       titles: DatasetsUtils.titles,
       defaultNewEntry: defaultNewEntry,
+      defaultContentFilterProfileSection: defaultContentFilterProfileSection,
       contentFilterSuggestions: [] as AutocompleteSuggestion[],
       contentFilter: {
         group: [] as ContentFilterRuleGroup[],
@@ -561,22 +576,22 @@ export default Vue.extend({
     unpackExclusions(exclusions: ContentFilterEntryMatch['exclusions']) {
       const result: string[] = []
       Object.keys(exclusions).forEach(
-        (exId) => {
-          const exclusionType = exclusions[exId]
-          const name = (this.contentFilter[exclusionType] as (ContentFilterRule | ContentFilterRuleGroup)[])?.find(
-            ({id}) => id === exId,
-          )?.name
-          if (name) {
-            result.push(exclusionType === 'group' ? `${name} ${this.groupSuffix}` : name)
-          }
-        },
+          (exId) => {
+            const exclusionType = exclusions[exId]
+            const name = (this.contentFilter[exclusionType] as (ContentFilterRule | ContentFilterRuleGroup)[])?.find(
+                ({id}) => id === exId,
+            )?.name
+            if (name) {
+              result.push(exclusionType === 'group' ? `${name} ${this.groupSuffix}` : name)
+            }
+          },
       )
       return result.join('\n')
     },
 
     getContentFilterId(exclusionType: ContentFilterIgnoreType, exclusions: string) {
       return (this.contentFilter[exclusionType] as (ContentFilterRule | ContentFilterRuleGroup)[]).find(
-        ({name}) => exclusions.includes(name),
+          ({name}) => exclusions.includes(name),
       )?.id
     },
 
@@ -611,16 +626,37 @@ export default Vue.extend({
         ..._.sortBy(_.map(this.contentFilter.group, ({name}) => ({value: `${name} ${this.groupSuffix}`}))),
       ]
     },
+
+    normalizeDocSections(section: ContentFilterProfileSectionType) {
+      this.localDoc[section] = _.cloneDeep(this.defaultContentFilterProfileSection)
+      this.emitDocUpdate()
+    },
   },
 
   created() {
     this.loadContentFilterRuleIDs()
   },
+
+  watch: {
+    selectedDoc: {
+      handler: function(value) {
+        // adding necessary fields to all local doc sections if missing
+        const sections: ContentFilterProfileSectionType[] = ['args', 'cookies', 'headers', 'path']
+        for (let i = 0; i < sections.length; i++) {
+          if (!value[sections[i]]) {
+            this.normalizeDocSections(sections[i])
+          }
+        }
+      },
+      immediate: true,
+      deep: true,
+    },
+  },
 })
 </script>
 
 <style>
-  .dropdown .dropdown-menu {
-    width: auto;
-  }
+.dropdown .dropdown-menu {
+  width: auto;
+}
 </style>

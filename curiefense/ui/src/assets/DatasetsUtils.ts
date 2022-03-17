@@ -1,6 +1,14 @@
 import {
-  ACLProfile, FlowControlPolicy, RateLimit, GlobalFilter, SecurityPolicy, ContentFilterProfile,
-  ContentFilterRule, ContentFilterRuleGroup, HttpRequestMethods,
+  ACLProfile,
+  ContentFilterEntryMatch,
+  ContentFilterProfile,
+  ContentFilterRule,
+  ContentFilterRuleGroup,
+  FlowControlPolicy,
+  GlobalFilter,
+  HttpRequestMethods,
+  RateLimit,
+  SecurityPolicy,
 } from '@/types'
 
 const titles: { [key: string]: string } = {
@@ -101,31 +109,44 @@ const newDocEntryFactory: { [key: string]: Function } = {
       'id': generateUUID2(),
       'name': 'New Content Filter Profile',
       'ignore_alphanum': true,
-
-      'max_header_length': 1024,
-      'max_cookie_length': 1024,
-      'max_arg_length': 1024,
-
-      'max_headers_count': 42,
-      'max_cookies_count': 42,
-      'max_args_count': 512,
-
-      'min_headers_risk': 1,
-      'min_cookies_risk': 1,
-      'min_args_risk': 1,
-
-      'args': {
-        'names': [],
-        'regex': [],
-      },
       'headers': {
-        'names': [],
-        'regex': [],
+        'names': [] as ContentFilterEntryMatch[],
+        'regex': [] as ContentFilterEntryMatch[],
+        'min_risk': 4,
+        'max_count': 42,
+        'max_length': 1024,
       },
       'cookies': {
-        'names': [],
-        'regex': [],
+        'names': [] as ContentFilterEntryMatch[],
+        'regex': [] as ContentFilterEntryMatch[],
+        'min_risk': 4,
+        'max_count': 42,
+        'max_length': 1024,
       },
+      'args': {
+        'names': [] as ContentFilterEntryMatch[],
+        'regex': [] as ContentFilterEntryMatch[],
+        'min_risk': 4,
+        'max_count': 512,
+        'max_length': 1024,
+      },
+      'path': {
+        'names': [] as ContentFilterEntryMatch[],
+        'regex': [] as ContentFilterEntryMatch[],
+        'min_risk': 4,
+        'max_count': 42,
+        'max_length': 1024,
+      },
+      'decoding': {
+        base64: true,
+        dual: false,
+        html: false,
+        unicode: false,
+      },
+      'masking_seed': 'CHANGEME',
+      'active': [],
+      'report': [],
+      'ignore': [],
     }
   },
 

@@ -3,7 +3,16 @@ import {afterEach, beforeEach, describe, expect, jest, test} from '@jest/globals
 import {shallowMount, Wrapper} from '@vue/test-utils'
 import axios from 'axios'
 import Vue from 'vue'
-import {ACLProfile, BasicDocument, Branch, FlowControlPolicy, RateLimit, GlobalFilter, SecurityPolicy, ContentFilterProfile} from '@/types'
+import {
+  ACLProfile,
+  BasicDocument,
+  Branch,
+  ContentFilterProfile,
+  FlowControlPolicy,
+  GlobalFilter,
+  RateLimit,
+  SecurityPolicy,
+} from '@/types'
 
 jest.useFakeTimers()
 jest.mock('axios')
@@ -345,18 +354,44 @@ describe('DocumentSearch.vue', () => {
         'id': '01b2abccc275',
         'name': 'default contentfilter',
         'ignore_alphanum': true,
-        'max_header_length': 1024,
-        'max_cookie_length': 1024,
-        'max_arg_length': 1024,
-        'max_headers_count': 42,
-        'max_cookies_count': 42,
-        'max_args_count': 512,
-        'min_headers_risk': 1,
-        'min_cookies_risk': 1,
-        'min_args_risk': 1,
-        'args': {'names': [], 'regex': []},
-        'headers': {'names': [], 'regex': []},
-        'cookies': {'names': [], 'regex': []},
+        'headers': {
+          'names': [],
+          'regex': [],
+          'min_risk': 4,
+          'max_count': 42,
+          'max_length': 1024,
+        },
+        'cookies': {
+          'names': [],
+          'regex': [],
+          'min_risk': 4,
+          'max_count': 42,
+          'max_length': 1024,
+        },
+        'args': {
+          'names': [],
+          'regex': [],
+          'min_risk': 4,
+          'max_count': 512,
+          'max_length': 1024,
+        },
+        'path': {
+          'names': [],
+          'regex': [],
+          'min_risk': 4,
+          'max_count': 42,
+          'max_length': 1024,
+        },
+        'decoding': {
+          base64: true,
+          dual: false,
+          html: false,
+          unicode: false,
+        },
+        'masking_seed': '',
+        'active': [],
+        'report': [],
+        'ignore': [],
       },
     ]
     jest.spyOn(axios, 'get').mockImplementation((path) => {

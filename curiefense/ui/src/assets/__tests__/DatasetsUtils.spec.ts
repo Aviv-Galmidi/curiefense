@@ -38,21 +38,28 @@ describe('RequestsUtils.ts', () => {
       expect(regexUUID2.test(document['id'])).toBeTruthy()
       expect(document['name']).toEqual('New Content Filter Profile')
       expect(document['ignore_alphanum']).toEqual(true)
-      expect(document['max_header_length']).toEqual(1024)
-      expect(document['max_cookie_length']).toEqual(1024)
-      expect(document['max_arg_length']).toEqual(1024)
-      expect(document['max_headers_count']).toEqual(42)
-      expect(document['max_cookies_count']).toEqual(42)
-      expect(document['max_args_count']).toEqual(512)
-      expect(document['min_headers_risk']).toEqual(1)
-      expect(document['min_cookies_risk']).toEqual(1)
-      expect(document['min_args_risk']).toEqual(1)
-      expect(document['args']['names']).toEqual([])
-      expect(document['args']['regex']).toEqual([])
+      expect(document['headers']['max_length']).toEqual(1024)
+      expect(document['headers']['max_count']).toEqual(42)
+      expect(document['headers']['min_risk']).toEqual(4)
       expect(document['headers']['names']).toEqual([])
       expect(document['headers']['regex']).toEqual([])
+      expect(document['cookies']['max_length']).toEqual(1024)
+      expect(document['cookies']['max_count']).toEqual(42)
+      expect(document['cookies']['min_risk']).toEqual(4)
       expect(document['cookies']['names']).toEqual([])
       expect(document['cookies']['regex']).toEqual([])
+      expect(document['args']['max_length']).toEqual(1024)
+      expect(document['args']['max_count']).toEqual(512)
+      expect(document['args']['min_risk']).toEqual(4)
+      expect(document['args']['names']).toEqual([])
+      expect(document['args']['regex']).toEqual([])
+      expect(document['decoding']['base64']).toEqual(true)
+      expect(document['decoding']['dual']).toEqual(false)
+      expect(document['decoding']['html']).toEqual(false)
+      expect(document['decoding']['unicode']).toEqual(false)
+      expect(document['active']).toEqual([])
+      expect(document['report']).toEqual([])
+      expect(document['ignore']).toEqual([])
     })
 
     test('should generate a new Global Filter', async () => {
@@ -134,7 +141,12 @@ describe('RequestsUtils.ts', () => {
     })
 
     test('should generate a new Content Filter Group', async () => {
-      const {id, name, description, content_filter_rule_ids: contentFilterIds} = newDocEntryFactory.contentfiltergroups()
+      const {
+        id,
+        name,
+        description,
+        content_filter_rule_ids: contentFilterIds,
+      } = newDocEntryFactory.contentfiltergroups()
       expect(regexUUID2.test(id)).toBeTruthy()
       expect(name).toEqual('New Content Filter Rule Group')
       expect(description).toEqual('')
