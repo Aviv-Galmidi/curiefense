@@ -14,6 +14,8 @@
         "aclid:--default--",
         "geo:united-states",
         "bot",
+        "libinjection",
+        "libinjection-xss",
         "aclname:default-acl"
       ],
       "action": "custom_response",
@@ -44,7 +46,13 @@
         "contentfiltername:default-contentfilter",
         "aclid:--default--",
         "bot",
-        "aclname:default-acl"
+        "sqli",
+        "waf",
+        "sig-id-100016",
+        "aclname:default-acl",
+        "sig-risk-5",
+        "sig-category-sqli",
+        "sig-subcategory-built-in-function-invocation"
       ],
       "action": "custom_response",
       "block_mode": false,

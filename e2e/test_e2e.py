@@ -1271,15 +1271,72 @@ CONTENT_FILTER_SHORT_HEADERS = {
     "id": "e2e000000002",
     "name": "e2e content filter short headers",
     "ignore_alphanum": True,
-    "max_header_length": 50,
-    "max_cookie_length": 1024,
-    "max_arg_length": 1024,
-    "max_headers_count": 42,
-    "max_cookies_count": 42,
-    "max_args_count": 512,
     "args": {"names": [], "regex": []},
-    "headers": {"names": [], "regex": []},
+    "headers": {"max_length": 50, "max_count": 42, "names": [], "regex": []},
     "cookies": {"names": [], "regex": []},
+}
+
+CONTENT_FILTER_MISC_HEADERS = {
+    "id": "e2e000000002m",
+    "name": "e2e waf misc headers",
+    "ignore_alphanum": False,
+    "args": {
+        "max_count": 5,
+        "max_length": 1024,
+        "min_risk": 1,
+        "names": [
+            {
+                "exclusions": {},
+                "key": "a",
+                "mask": False,
+                "reg": "^[A-Z]+",
+                "restrict": False,
+            },
+            {
+                "exclusions": {},
+                "key": "b",
+                "mask": False,
+                "reg": "^[A-Z]+",
+                "restrict": True,
+            },
+            {
+                "exclusions": {},
+                "key": "c",
+                "mask": True,
+                "reg": "^[A-Z]+",
+                "restrict": True,
+            },
+            {
+                "exclusions": {},
+                "key": "d",
+                "mask": True,
+                "reg": "^[A-Z]+",
+                "restrict": False,
+            },
+        ],
+        "regex": [],
+    },
+    "headers": {
+        "names": [],
+        "regex": [],
+        "max_length": 50,
+        "max_count": 42,
+        "min_risk": 3,
+    },
+    "cookies": {
+        "names": [],
+        "regex": [],
+        "max_length": 1024,
+        "max_count": 42,
+        "min_risk": 4,
+    },
+    "path": {
+        "names": [],
+        "regex": [],
+        "max_length": 1024,
+        "max_count": 42,
+        "min_risk": 5,
+    },
 }
 
 SECURITYPOLICY = [
@@ -1339,6 +1396,16 @@ SECURITYPOLICY = [
                 "isnew": True,
             },
             {
+                "name": "waf-misc-headers",
+                "match": "/waf-misc-headers/",
+                "acl_profile": "__default__",
+                "acl_active": False,
+                "content_filter_profile": "e2e000000002m",
+                "content_filter_active": True,
+                "limit_ids": [],
+                "isnew": True,
+            },
+            {
                 "name": "nofilter",
                 "match": "/nofilter/",
                 "acl_profile": "__default__",
@@ -1365,6 +1432,7 @@ def securitypolicy_config(cli, acl):
     # Add content filter profile entry
     contentfilterprofile = cli.call(f"doc get {TEST_CONFIG_NAME} contentfilterprofiles")
     contentfilterprofile.append(CONTENT_FILTER_SHORT_HEADERS)
+    contentfilterprofile.append(CONTENT_FILTER_MISC_HEADERS)
     cli.call(
         f"doc update {TEST_CONFIG_NAME} contentfilterprofiles /dev/stdin",
         inputjson=contentfilterprofile,
@@ -1418,6 +1486,18 @@ class TestSecurityPolicy:
             "/content-filter-short-headers/",
             headers={"Long-header": "0123456789" * 5 + "A"},
         )
+
+    def test_unrestricted_waf_match(self, target, securitypolicy_config):
+        assert target.is_reachable("/waf-misc-headers/x?a=ABCDE")
+
+    def test_unrestricted_waf_nomatch(self, target, securitypolicy_config):
+        assert target.is_reachable("/waf-misc-headers/x?a=12345")
+
+    def test_restricted_waf_match(self, target, securitypolicy_config):
+        assert target.is_reachable("/waf-misc-headers/x?b=ABCDE")
+
+    def test_restricted_waf_nomatch(self, target, securitypolicy_config):
+        assert not target.is_reachable("/waf-misc-headers/x?b=12345")
 
 
 # --- Content Filter Profiles tests ---
@@ -1498,7 +1578,7 @@ def content_filter_param_config(cli, request, ignore_alphanum):
     cli.revert_and_enable()
     # Apply CONTENT_FILTER_PARAM_CONSTRAINTS
     contentfilterprofile = cli.call(f"doc get {TEST_CONFIG_NAME} contentfilterprofiles")
-    for k in ("args", "headers", "cookies"):
+    for k in ("args", "headers", "cookies", "path"):
         contentfilterprofile[0][k] = CONTENT_FILTER_PARAM_CONSTRAINTS
     contentfilterprofile[0]["ignore_alphanum"] = ignore_alphanum
     cli.call(

@@ -1,0 +1,122 @@
+[
+  {
+    "response": {
+      "tags": [
+        "asn:396507",
+        "sante",
+        "ip:23-129-64-253",
+        "contentfilterid:ignoresqli",
+        "contentfiltername:ignore-sqli",
+        "container:1e219d8ed6b4",
+        "all",
+        "securitypolicy:default-entry",
+        "securitypolicy-entry:content-filter-ignore-sqli",
+        "aclid:--default--",
+        "geo:united-states",
+        "bot",
+        "aclname:default-acl"
+      ],
+      "action": "pass"
+    },
+    "name": "ignore sqli (pass)",
+    "headers": {
+      "x-request-id": "e6acdce3-e076-4f0d-9a22-9d82fe01ba60",
+      "x-forwarded-for": "23.129.64.253",
+      ":path": "\/content-filter\/ignoresqli?a=1&b=xp_cmdshell",
+      ":method": "GET",
+      ":authority": "localhost:30081"
+    }
+  },
+  {
+    "response": {
+      "tags": [
+        "asn:396507",
+        "sante",
+        "ip:23-129-64-253",
+        "contentfilterid:ignoresqli",
+        "contentfiltername:ignore-sqli",
+        "container:1e219d8ed6b4",
+        "all",
+        "securitypolicy:default-entry",
+        "securitypolicy-entry:content-filter-ignore-sqli",
+        "aclid:--default--",
+        "geo:united-states",
+        "bot",
+        "aclname:default-acl",
+        "generic",
+        "sig-category-generic",
+        "sig-risk-1",
+        "sig-id-100099",
+        "sig-subcategory-generic",
+        "waf"
+      ],
+      "action": "custom_response",
+      "block_mode": true,
+      "status": 403
+    },
+    "name": "ignore sqli (block)",
+    "headers": {
+      "x-request-id": "e6acdce3-e076-4f0d-9a22-9d82fe01ba60",
+      "x-forwarded-for": "23.129.64.253",
+      ":path": "\/content-filter\/ignoresqli?a=1&b=/nettracker/",
+      ":method": "GET",
+      ":authority": "localhost:30081"
+    }
+  },
+  {
+    "response": {
+      "tags": [
+        "asn:396507",
+        "sante",
+        "ip:23-129-64-253",
+        "contentfilterid:ignorerl5",
+        "contentfiltername:ignore-risk-level-5",
+        "container:1e219d8ed6b4",
+        "all",
+        "securitypolicy:default-entry",
+        "securitypolicy-entry:content-filter-ignore-risk-level-5",
+        "aclid:--default--",
+        "geo:united-states",
+        "bot",
+        "aclname:default-acl"
+      ],
+      "action": "pass"
+    },
+    "name": "ignore rl5 (pass)",
+    "headers": {
+      "x-request-id": "e6acdce3-e076-4f0d-9a22-9d82fe01ba60",
+      "x-forwarded-for": "23.129.64.253",
+      ":path": "\/content-filter\/ignorerl5?a=1&b=xp_cmdshell",
+      ":method": "GET",
+      ":authority": "localhost:30081"
+    }
+  },
+  {
+    "response": {
+      "tags": [
+        "asn:396507",
+        "sante",
+        "ip:23-129-64-253",
+        "contentfilterid:ignorerl5",
+        "contentfiltername:ignore-risk-level-5",
+        "container:1e219d8ed6b4",
+        "all",
+        "securitypolicy:default-entry",
+        "securitypolicy-entry:content-filter-ignore-risk-level-5",
+        "aclid:--default--",
+        "geo:united-states",
+        "bot",
+        "aclname:default-acl"
+      ],
+      "action": "pass"
+    },
+    "name": "ignore rl5 (block)",
+    "headers": {
+      "x-request-id": "e6acdce3-e076-4f0d-9a22-9d82fe01ba60",
+      "x-forwarded-for": "23.129.64.253",
+      ":path": "\/content-filter\/ignorerl5?a=1&b=information_schema",
+      ":method": "GET",
+      ":authority": "localhost:30081"
+    }
+  }
+]

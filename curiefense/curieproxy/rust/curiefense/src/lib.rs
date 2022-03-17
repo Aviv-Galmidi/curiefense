@@ -13,6 +13,8 @@ pub mod securitypolicy;
 pub mod tagging;
 pub mod utils;
 
+use crate::utils::map_request;
+use crate::utils::RawRequest;
 use interface::Tags;
 use serde_json::json;
 
@@ -68,7 +70,7 @@ fn challenge_verified<GH: Grasshopper>(gh: &GH, reqinfo: &RequestInfo, logs: &mu
 pub fn inspect_generic_request_map<GH: Grasshopper>(
     configpath: &str,
     mgh: Option<GH>,
-    reqinfo: RequestInfo,
+    raw: RawRequest,
     itags: Tags,
     logs: &mut Logs,
 ) -> (Decision, Tags, RequestInfo) {
@@ -79,40 +81,47 @@ pub fn inspect_generic_request_map<GH: Grasshopper>(
 
     logs.debug(format!("Inspection starts (grasshopper active: {})", mgh.is_some()));
 
-    // without grasshopper, default to being human
-    let is_human = if let Some(gh) = &mgh {
-        challenge_verified(gh, &reqinfo, logs)
-    } else {
-        false
-    };
-
-    if is_human {
-        tags.insert("human");
-    } else {
-        tags.insert("bot");
-    }
-
-    logs.debug(format!("Human check result: {}", is_human));
-
     // do all config queries in the lambda once
     // there is a lot of copying taking place, to minimize the lock time
     // this decision should be backed with benchmarks
-    let ((nm, securitypolicy), (ntags, globalfilter_dec), flows) = match with_config(configpath, logs, |slogs, cfg| {
-        let msecuritypolicy = match_securitypolicy(&reqinfo, cfg, slogs).map(|(nm, um)| (nm, um.clone()));
-        let nflows = cfg.flows.clone();
-        let ntags = tag_request(is_human, cfg, &reqinfo);
-        (msecuritypolicy, ntags, nflows)
-    }) {
-        Some((Some(stuff), itags, iflows)) => (stuff, itags, iflows),
-        Some((None, _, _)) => {
-            logs.debug("Could not find a matching securitypolicy");
-            return (Decision::Pass, tags, reqinfo);
-        }
-        None => {
-            logs.debug("Something went wrong during request tagging");
-            return (Decision::Pass, tags, reqinfo);
-        }
-    };
+
+    let ((nm, securitypolicy), (ntags, globalfilter_dec), flows, reqinfo, is_human) =
+        match with_config(configpath, logs, |slogs, cfg| {
+            let mmapinfo =
+                match_securitypolicy(&raw.get_host(), &raw.meta.path, cfg, slogs).map(|(nm, um)| (nm, um.clone()));
+            match mmapinfo {
+                Some((nm, secpolicy)) => {
+                    let reqinfo = map_request(slogs, &secpolicy.content_filter_profile.decoding, &raw);
+                    let nflows = cfg.flows.clone();
+
+                    // without grasshopper, default to being human
+                    let is_human = if let Some(gh) = &mgh {
+                        challenge_verified(gh, &reqinfo, slogs)
+                    } else {
+                        false
+                    };
+
+                    let ntags = tag_request(is_human, cfg, &reqinfo);
+                    Some(((nm, secpolicy), ntags, nflows, reqinfo, is_human))
+                }
+                None => {
+                    slogs.error("Could not find a security policy");
+                    None
+                }
+            }
+        }) {
+            Some(Some(x)) => x,
+            Some(None) => {
+                logs.debug("Something went wrong during request tagging");
+                return (Decision::Pass, tags, map_request(logs, &[], &raw));
+            }
+            None => {
+                logs.debug("Something went wrong during security policy searching");
+                return (Decision::Pass, tags, map_request(logs, &[], &raw));
+            }
+        };
+    let masking_seed = &securitypolicy.content_filter_profile.masking_seed;
+
     logs.debug("request tagged");
     tags.extend(ntags);
     tags.insert_qualified("securitypolicy", &nm);
@@ -122,16 +131,16 @@ pub fn inspect_generic_request_map<GH: Grasshopper>(
     tags.insert_qualified("contentfilterid", &securitypolicy.content_filter_profile.id);
     tags.insert_qualified("contentfiltername", &securitypolicy.content_filter_profile.name);
 
-    if let Some(dec) = mgh.as_ref().and_then(|gh| {
-        reqinfo
-            .rinfo
-            .qinfo
-            .uri
-            .as_ref()
-            .and_then(|uri| challenge_phase02(gh, uri, &reqinfo.headers))
-    }) {
+    if let Some(dec) = mgh
+        .as_ref()
+        .and_then(|gh| challenge_phase02(gh, &reqinfo.rinfo.qinfo.uri, &reqinfo.headers))
+    {
         // TODO, check for monitor
-        return (dec, tags, masking(reqinfo, &securitypolicy.content_filter_profile));
+        return (
+            dec,
+            tags,
+            masking(masking_seed, reqinfo, &securitypolicy.content_filter_profile),
+        );
     }
     logs.debug("challenge phase2 ignored");
 
@@ -139,7 +148,11 @@ pub fn inspect_generic_request_map<GH: Grasshopper>(
         logs.debug(format!("Global filter decision {:?}", reason));
         let decision = action.to_decision(is_human, &mgh, &reqinfo.headers, reason);
         if decision.is_final() {
-            return (decision, tags, masking(reqinfo, &securitypolicy.content_filter_profile));
+            return (
+                decision,
+                tags,
+                masking(masking_seed, reqinfo, &securitypolicy.content_filter_profile),
+            );
         }
     }
 
@@ -150,7 +163,11 @@ pub fn inspect_generic_request_map<GH: Grasshopper>(
         Ok(SimpleDecision::Action(a, reason)) => {
             let decision = a.to_decision(is_human, &mgh, &reqinfo.headers, reason);
             if decision.is_final() {
-                return (decision, tags, masking(reqinfo, &securitypolicy.content_filter_profile));
+                return (
+                    decision,
+                    tags,
+                    masking(masking_seed, reqinfo, &securitypolicy.content_filter_profile),
+                );
             }
         }
     }
@@ -161,7 +178,11 @@ pub fn inspect_generic_request_map<GH: Grasshopper>(
     if let SimpleDecision::Action(action, reason) = limit_check {
         let decision = action.to_decision(is_human, &mgh, &reqinfo.headers, reason);
         if decision.is_final() {
-            return (decision, tags, masking(reqinfo, &securitypolicy.content_filter_profile));
+            return (
+                decision,
+                tags,
+                masking(masking_seed, reqinfo, &securitypolicy.content_filter_profile),
+            );
         }
     }
     logs.debug(format!("limit checks done ({} limits)", securitypolicy.limits.len()));
@@ -176,7 +197,7 @@ pub fn inspect_generic_request_map<GH: Grasshopper>(
                 return (
                     Decision::Pass,
                     tags,
-                    masking(reqinfo, &securitypolicy.content_filter_profile),
+                    masking(masking_seed, reqinfo, &securitypolicy.content_filter_profile),
                 );
             } else {
                 logs.debug("ACL force block detected");
@@ -226,7 +247,7 @@ pub fn inspect_generic_request_map<GH: Grasshopper>(
                         return (
                             challenge_phase01(&gh, ua, dtags),
                             tags,
-                            masking(reqinfo, &securitypolicy.content_filter_profile),
+                            masking(masking_seed, reqinfo, &securitypolicy.content_filter_profile),
                         );
                     }
                     (gua, ggh) => {
@@ -250,14 +271,14 @@ pub fn inspect_generic_request_map<GH: Grasshopper>(
             return (
                 acl_block(true, cde, &tgs),
                 tags,
-                masking(reqinfo, &securitypolicy.content_filter_profile),
+                masking(masking_seed, reqinfo, &securitypolicy.content_filter_profile),
             );
         }
     }
 
     // otherwise, run content_filter_check
     let content_filter_result = match HSDB.read() {
-        Ok(rd) => content_filter_check(&reqinfo, &securitypolicy.content_filter_profile, rd),
+        Ok(rd) => content_filter_check(logs, &mut tags, &reqinfo, &securitypolicy.content_filter_profile, rd),
         Err(rr) => {
             logs.error(format!("Could not get lock on HSDB: {}", rr));
             Ok(())
@@ -282,30 +303,33 @@ pub fn inspect_generic_request_map<GH: Grasshopper>(
             }
         },
         tags,
-        masking(reqinfo, &securitypolicy.content_filter_profile),
+        masking(masking_seed, reqinfo, &securitypolicy.content_filter_profile),
     )
 }
 
 // generic entry point when the request map has already been parsed
 pub fn content_filter_check_generic_request_map(
     configpath: &str,
-    reqinfo: &RequestInfo,
+    raw: &RawRequest,
     content_filter_id: &str,
     logs: &mut Logs,
-) -> Decision {
+) -> (Decision, RequestInfo, Tags) {
+    let mut tags = Tags::default();
     logs.debug("Content Filter inspection starts");
-    let content_filter_profile = match with_config(configpath, logs, |_slogs, cfg| {
+    let waf_profile = match with_config(configpath, logs, |_slogs, cfg| {
         cfg.content_filter_profiles.get(content_filter_id).cloned()
     }) {
         Some(Some(prof)) => prof,
         _ => {
             logs.error("Content Filter profile not found");
-            return Decision::Pass;
+            return (Decision::Pass, map_request(logs, &[], raw), tags);
         }
     };
 
-    let content_filter_result = match HSDB.read() {
-        Ok(rd) => content_filter_check(reqinfo, &content_filter_profile, rd),
+    let reqinfo = map_request(logs, &waf_profile.decoding, raw);
+
+    let waf_result = match HSDB.read() {
+        Ok(rd) => content_filter_check(logs, &mut tags, &reqinfo, &waf_profile, rd),
         Err(rr) => {
             logs.error(format!("Could not get lock on HSDB: {}", rr));
             Ok(())
@@ -313,8 +337,12 @@ pub fn content_filter_check_generic_request_map(
     };
     logs.debug("Content Filter checks done");
 
-    match content_filter_result {
-        Ok(()) => Decision::Pass,
-        Err(wb) => Decision::Action(wb.to_action()),
-    }
+    (
+        match waf_result {
+            Ok(()) => Decision::Pass,
+            Err(wb) => Decision::Action(wb.to_action()),
+        },
+        reqinfo,
+        tags,
+    )
 }

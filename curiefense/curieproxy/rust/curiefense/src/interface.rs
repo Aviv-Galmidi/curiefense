@@ -142,6 +142,14 @@ impl Tags {
         tvec.sort_unstable();
         tvec.join("*")
     }
+
+    pub fn intersect(&self, other: &HashSet<String>) -> HashSet<String> {
+        self.0.intersection(other).cloned().collect()
+    }
+
+    pub fn has_intersection(&self, other: &HashSet<String>) -> bool {
+        self.0.intersection(other).next().is_some()
+    }
 }
 
 // an action, as formatted for outside consumption

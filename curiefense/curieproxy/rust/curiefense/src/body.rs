@@ -14,9 +14,10 @@ use serde_json::Value;
 use std::io::Read;
 use xmlparser::{ElementEnd, EntityDefinition, ExternalId, Token};
 
+use crate::config::utils::DataSource;
 use crate::logs::Logs;
 use crate::requestfields::RequestField;
-use crate::utils::url::parse_urlencoded_params_bytes;
+use crate::utils::decoders::parse_urlencoded_params_bytes;
 
 fn json_path(prefix: &[String]) -> String {
     if prefix.is_empty() {
@@ -53,16 +54,20 @@ fn flatten_json(args: &mut RequestField, prefix: &mut Vec<String>, value: Value)
             prefix.pop();
         }
         Value::String(str) => {
-            args.add(json_path(prefix), str);
+            args.add(json_path(prefix), DataSource::FromBody, str);
         }
         Value::Bool(b) => {
-            args.add(json_path(prefix), (if b { "true" } else { "false" }).to_string());
+            args.add(
+                json_path(prefix),
+                DataSource::FromBody,
+                (if b { "true" } else { "false" }).to_string(),
+            );
         }
         Value::Number(n) => {
-            args.add(json_path(prefix), format!("{}", n));
+            args.add(json_path(prefix), DataSource::FromBody, format!("{}", n));
         }
         Value::Null => {
-            args.add(json_path(prefix), "null".to_string());
+            args.add(json_path(prefix), DataSource::FromBody, "null".to_string());
         }
     }
 }
@@ -119,7 +124,7 @@ fn close_xml_element(
             if idx == 0 {
                 // empty XML element, save it with an empty string
                 let path = xml_path(stack) + openname.as_str() + "1";
-                args.add(path, String::new());
+                args.add(path, DataSource::FromBody, String::new());
             }
             Ok(())
         }
@@ -153,14 +158,19 @@ fn xml_body(args: &mut RequestField, body: &[u8]) -> Result<(), String> {
             Token::DtdEnd { .. } => (),
             Token::EmptyDtd { .. } => (),
             Token::EntityDeclaration { name, definition, .. } => match definition {
-                EntityDefinition::EntityValue(span) => {
-                    args.add("_XMLENTITY_VALUE_".to_string() + name.as_str(), span.to_string())
-                }
-                EntityDefinition::ExternalId(ExternalId::System(span)) => {
-                    args.add("_XMLENTITY_SYSTEMID_".to_string() + name.as_str(), span.to_string())
-                }
+                EntityDefinition::EntityValue(span) => args.add(
+                    "_XMLENTITY_VALUE_".to_string() + name.as_str(),
+                    DataSource::FromBody,
+                    span.to_string(),
+                ),
+                EntityDefinition::ExternalId(ExternalId::System(span)) => args.add(
+                    "_XMLENTITY_SYSTEMID_".to_string() + name.as_str(),
+                    DataSource::FromBody,
+                    span.to_string(),
+                ),
                 EntityDefinition::ExternalId(ExternalId::Public(p1, p2)) => args.add(
                     "_XMLENTITY_PUBLICID_".to_string() + name.as_str(),
+                    DataSource::FromBody,
                     p1.to_string() + "/" + p2.as_str(),
                 ),
             },
@@ -180,18 +190,18 @@ fn xml_body(args: &mut RequestField, body: &[u8]) -> Result<(), String> {
             },
             Token::Attribute { local, value, .. } => {
                 let path = xml_path(&stack) + local.as_str();
-                args.add(path, value.to_string());
+                args.add(path, DataSource::FromBody, value.to_string());
             }
             Token::Text { text } => {
                 let trimmed = text.trim();
                 if !trimmed.is_empty() {
                     xml_increment_last(&mut stack);
-                    args.add(xml_path(&stack), trimmed.to_string());
+                    args.add(xml_path(&stack), DataSource::FromBody, trimmed.to_string());
                 }
             }
             Token::Cdata { text, .. } => {
                 xml_increment_last(&mut stack);
-                args.add(xml_path(&stack), text.to_string());
+                args.add(xml_path(&stack), DataSource::FromBody, text.to_string());
             }
         }
     }
@@ -224,7 +234,7 @@ fn multipart_form_encoded(boundary: &str, args: &mut RequestField, body: &[u8]) 
             let _ = entry.data.read_to_end(&mut content);
             let name = entry.headers.name.to_string();
             let scontent = String::from_utf8_lossy(&content);
-            args.add(name, scontent.to_string());
+            args.add(name, DataSource::FromBody, scontent.to_string());
         })
         .map_err(|rr| format!("Could not parse multipart body: {}", rr))
 }
@@ -266,11 +276,12 @@ pub fn parse_body(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::contentfilter::Transformation;
     use crate::logs::LogLevel;
 
-    fn test_parse_ok(mcontent_type: Option<&str>, body: &[u8]) -> RequestField {
+    fn test_parse_ok_dec(dec: &[Transformation], mcontent_type: Option<&str>, body: &[u8]) -> RequestField {
         let mut logs = Logs::default();
-        let mut args = RequestField::default();
+        let mut args = RequestField::new(dec);
         parse_body(&mut logs, &mut args, mcontent_type, body).unwrap();
         for lg in logs.logs {
             if lg.level > LogLevel::Debug {
@@ -282,12 +293,12 @@ mod tests {
 
     fn test_parse_bad(mcontent_type: Option<&str>, body: &[u8]) {
         let mut logs = Logs::default();
-        let mut args = RequestField::default();
+        let mut args = RequestField::new(&[]);
         assert!(parse_body(&mut logs, &mut args, mcontent_type, body).is_err());
     }
 
-    fn test_parse(mcontent_type: Option<&str>, body: &[u8], expected: &[(&str, &str)]) {
-        let args = test_parse_ok(mcontent_type, body);
+    fn test_parse_dec(dec: &[Transformation], mcontent_type: Option<&str>, body: &[u8], expected: &[(&str, &str)]) {
+        let args = test_parse_ok_dec(dec, mcontent_type, body);
         for (k, v) in expected {
             match args.get_str(k) {
                 None => panic!("Argument not set {}", k),
@@ -296,12 +307,16 @@ mod tests {
         }
         if args.len() != expected.len() {
             for (k, v) in args.iter() {
-                if !expected.iter().any(|(ek, _)| ek == k) {
+                if !expected.iter().any(|(ek, _)| ek == &k) {
                     println!("Spurious argument {}: {}", k, v);
                 }
             }
             panic!("Spurious arguments");
         }
+    }
+
+    fn test_parse(mcontent_type: Option<&str>, body: &[u8], expected: &[(&str, &str)]) {
+        test_parse_dec(&[], mcontent_type, body, expected)
     }
 
     #[test]
@@ -316,10 +331,11 @@ mod tests {
 
     #[test]
     fn json_scalar_b64() {
-        test_parse(
+        test_parse_dec(
+            &[Transformation::Base64Decode],
             Some("application/json"),
             br#""c2NhbGFyIQ==""#,
-            &[("JSON_ROOT", "c2NhbGFyIQ=="), ("JSON_ROOT_base64", "scalar!")],
+            &[("JSON_ROOT", "c2NhbGFyIQ=="), ("JSON_ROOT:decoded", "scalar!")],
         );
     }
 
@@ -363,8 +379,8 @@ mod tests {
     #[test]
     fn arguments_collision() {
         let mut logs = Logs::default();
-        let mut args = RequestField::default();
-        args.add("a".to_string(), "query_arg".to_string());
+        let mut args = RequestField::new(&[]);
+        args.add("a".to_string(), DataSource::FromBody, "query_arg".to_string());
         parse_body(&mut logs, &mut args, Some("application/json"), br#"{"a": "body_arg"}"#).unwrap();
         assert_eq!(args.get_str("a"), Some("query_arg body_arg"));
     }
@@ -376,10 +392,31 @@ mod tests {
 
     #[test]
     fn xml_simple_b64() {
-        test_parse(
+        test_parse_dec(
+            &[Transformation::Base64Decode],
             Some("text/xml"),
             br#"<a>ZHFzcXNkcXNk</a>"#,
-            &[("a1", "ZHFzcXNkcXNk"), ("a1_base64", "dqsqsdqsd")],
+            &[("a1", "ZHFzcXNkcXNk"), ("a1:decoded", "dqsqsdqsd")],
+        );
+    }
+
+    #[test]
+    fn xml_simple_html() {
+        test_parse_dec(
+            &[Transformation::HtmlEntitiesDecode],
+            Some("text/xml"),
+            br#"<a>&lt;em&gt;</a>"#,
+            &[("a1", "&lt;em&gt;"), ("a1:decoded", "<em>")],
+        );
+    }
+
+    #[test]
+    fn xml_simple_html_partial() {
+        test_parse_dec(
+            &[Transformation::HtmlEntitiesDecode],
+            Some("text/xml"),
+            br#"<a>&lt;em&gt</a>"#,
+            &[("a1", "&lt;em&gt"), ("a1:decoded", "<em&gt")],
         );
     }
 
